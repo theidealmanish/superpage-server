@@ -1,5 +1,5 @@
 export default function globalError(err: any, req: any, res: any, next: any) {
-	console.log(err);
+	console.log(err.statusCode);
 	err.statusCode = err.statusCode || 500;
 	err.status = err.status || 'fail';
 	return res.status(err.statusCode).json({
