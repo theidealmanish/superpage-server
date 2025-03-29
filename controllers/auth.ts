@@ -3,24 +3,40 @@ import { NextFunction, Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
 import AppError from '../utils/AppError';
 import { expressjwt } from 'express-jwt';
+import jwt from 'jsonwebtoken';
 
 // register
 const register = catchAsync(
 	async (req: Request, res: Response, next: NextFunction) => {
 		const { name, username, email, password, walletAddress } = req.body;
 		// check if username or email already exists
-		const existingUser = await user.findOne({
-			$or: [{ username }, { email }],
-		});
-		if (existingUser) {
-			return next(new AppError('User already exists', 400));
-		}
-		const newUser = await user.create({
-			name,
+		const usernameExists = await user.findOne({
 			username,
+		});
+
+		if (usernameExists) {
+			return next(AppError.badRequest('Username already exists'));
+		}
+		const emailExists = await user.findOne({
 			email,
+		});
+		if (emailExists) {
+			return next(AppError.badRequest('Email already exists'));
+		}
+
+		const newUser = await user.create({
+			name: name
+				.trim()
+				.split(' ')
+				.map(
+					(word: string) =>
+						word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+				)
+				.join(' '),
+			username: username.trim().toLowerCase(),
+			email: email.trim(),
 			password,
-			walletAddress,
+			walletAddress: walletAddress.trim(),
 		});
 		res.status(201).json({
 			status: 'success',
@@ -45,10 +61,18 @@ const login = catchAsync(
 		if (!(await existingUser.comparePassword(password))) {
 			return next(new AppError('Invalid Credential', 401));
 		}
+		// generate and send JWT token
+		const token = jwt.sign(
+			{ id: existingUser._id },
+			process.env.JWT_SECRET as string,
+			{
+				expiresIn: '30d',
+			}
+		);
 		res.status(200).json({
 			status: 'success',
 			message: 'User signed in successfully',
-			data: existingUser,
+			token: token,
 		});
 	}
 );
