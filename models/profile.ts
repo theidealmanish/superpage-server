@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 interface Profile {
-	user: string;
+	user: mongoose.Schema.Types.ObjectId;
 	bio: string;
 	country: string;
 	socials: {

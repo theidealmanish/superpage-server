@@ -3,11 +3,16 @@ import { Request, Response } from 'express';
 import connectDB from './utils/connectDB';
 import globalError from './controllers/globalError';
 import notFound from './controllers/notFound';
-import authRoutes from './routes/auth';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+
 dotenv.config();
+
+// route imports
+import authRoutes from './routes/auth';
+import profileRoutes from './routes/profile';
+import hederaRoutes from './routes/wallets/hedera';
 
 // init app
 const app = express();
@@ -31,6 +36,10 @@ app.use(morgan('dev'));
 
 // routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
+
+// wallets routes
+app.use('/api/wallets/hedera', hederaRoutes);
 
 // not found
 app.use('*', notFound);

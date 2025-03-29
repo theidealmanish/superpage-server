@@ -10,33 +10,36 @@ interface User extends mongoose.Document {
 	comparePassword: (password: string) => Promise<boolean>;
 }
 
-const userSchema = new mongoose.Schema<User>({
-	name: {
-		type: String,
-		required: true,
+const userSchema = new mongoose.Schema<User>(
+	{
+		name: {
+			type: String,
+			required: true,
+		},
+		username: {
+			type: String,
+			required: true,
+			unique: true,
+			index: true,
+		},
+		walletAddress: {
+			type: String,
+			required: true,
+			unique: true,
+			index: true,
+		},
+		email: {
+			type: String,
+			required: true,
+			unique: true,
+		},
+		password: {
+			type: String,
+			required: true,
+		},
 	},
-	username: {
-		type: String,
-		required: true,
-		unique: true,
-		index: true,
-	},
-	walletAddress: {
-		type: String,
-		required: true,
-		unique: true,
-		index: true,
-	},
-	email: {
-		type: String,
-		required: true,
-		unique: true,
-	},
-	password: {
-		type: String,
-		required: true,
-	},
-});
+	{ timestamps: true }
+);
 
 // encrypt password before saving
 userSchema.pre<User>('save', async function (next) {

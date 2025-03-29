@@ -3,18 +3,13 @@ import User from '../models/user';
 import { NextFunction, Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
 import AppError from '../utils/AppError';
-import mongoose from 'mongoose';
-
-interface RequestWithUser extends Request {
-	user?: {
-		_id: string;
-	};
-}
+import { RequestWithAuth } from 'types/request';
 
 // Create a new profile
-const createProfile = catchAsync(
-	async (req: Request, res: Response, next: NextFunction) => {
-		const { userId, bio, country, socials } = req.body;
+export const createProfile = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
+		const userId = req.auth.id;
+		const { bio, country, socials } = req.body;
 
 		// Check if user exists
 		const user = await User.findById(userId);
@@ -43,19 +38,42 @@ const createProfile = catchAsync(
 	}
 );
 
-// Get profile by user ID
-const getProfileByUserId = catchAsync(
-	async (req: Request, res: Response, next: NextFunction) => {
-		const userId = req.params.userId;
+// // Get profile by user ID
+// const getProfileByUserId = catchAsync(
+// 	async (req: Request, res: Response, next: NextFunction) => {
+// 		const userId = req.params.userId;
+// 		console.log('userId', userId);
+// 		const profile = await Profile.findOne({ user: userId }).populate(
+// 			'user',
+// 			'name username'
+// 		);
 
-		// Validate userId is a valid MongoDB ObjectId
-		if (!mongoose.Types.ObjectId.isValid(userId)) {
-			return next(new AppError('Invalid user ID format', 400));
+// 		if (!profile) {
+// 			return next(new AppError('Profile not found', 404));
+// 		}
+
+// 		res.status(200).json({
+// 			status: 'success',
+// 			data: profile,
+// 		});
+// 	}
+// );
+
+// Get profile by username
+export const getProfileByUsername = catchAsync(
+	async (req: Request, res: Response, next: NextFunction) => {
+		const username = req.params.username;
+
+		const user = await User.findOne({ username });
+
+		if (!user) {
+			return next(new AppError('User not found', 404));
 		}
 
+		const userId = user?._id;
 		const profile = await Profile.findOne({ user: userId }).populate(
 			'user',
-			'name username email'
+			'name username walletAddress createdAt'
 		);
 
 		if (!profile) {
@@ -71,9 +89,9 @@ const getProfileByUserId = catchAsync(
 
 // Get current user's profile
 const getMyProfile = catchAsync(
-	async (req: RequestWithUser, res: Response, next: NextFunction) => {
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		// Assuming req.user is set from authentication middleware
-		const userId = req.user?._id;
+		const userId = req.auth.id;
 
 		if (!userId) {
 			return next(
@@ -100,10 +118,10 @@ const getMyProfile = catchAsync(
 );
 
 // Update profile
-const updateProfile = catchAsync(
-	async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const updateProfile = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		// Assuming req.user is set from authentication middleware
-		const userId = req.user?._id;
+		const userId = req.auth.id;
 
 		if (!userId) {
 			return next(
@@ -147,10 +165,10 @@ const updateProfile = catchAsync(
 );
 
 // Delete profile
-const deleteProfile = catchAsync(
-	async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const deleteProfile = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		// Assuming req.user is set from authentication middleware
-		const userId = req.user?._id;
+		const userId = req.auth.id;
 
 		if (!userId) {
 			return next(
@@ -173,10 +191,10 @@ const deleteProfile = catchAsync(
 );
 
 // Update only social links
-const updateSocialLinks = catchAsync(
-	async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const updateSocialLinks = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		// Assuming req.user is set from authentication middleware
-		const userId = req.user?._id;
+		const userId = req.auth.id;
 
 		if (!userId) {
 			return next(
@@ -217,7 +235,7 @@ const updateSocialLinks = catchAsync(
 );
 
 // Search profiles by country
-const searchProfilesByCountry = catchAsync(
+export const searchProfilesByCountry = catchAsync(
 	async (req: Request, res: Response, next: NextFunction) => {
 		const { country } = req.query;
 
@@ -236,13 +254,3 @@ const searchProfilesByCountry = catchAsync(
 		});
 	}
 );
-
-export {
-	createProfile,
-	getProfileByUserId,
-	getMyProfile,
-	updateProfile,
-	deleteProfile,
-	updateSocialLinks,
-	searchProfilesByCountry,
-};
