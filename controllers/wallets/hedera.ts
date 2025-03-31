@@ -5,6 +5,7 @@ import {
 	AccountCreateTransaction,
 	Hbar,
 	TransferTransaction,
+	TokenCreateTransaction,
 } from '@hashgraph/sdk';
 import catchAsync from '../../utils/catchAsync';
 import { configDotenv } from 'dotenv';
@@ -17,7 +18,7 @@ configDotenv();
 // setup client
 const client = Client.forTestnet();
 
-export const createHederaAccount = catchAsync(
+export const createAccount = catchAsync(
 	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		// Operator account ID and private key from string value
 		const OPERATOR_ACCOUNT_ID = AccountId.fromString(
@@ -100,7 +101,7 @@ export const createHederaAccount = catchAsync(
 	}
 );
 
-export const transactionInHedera = catchAsync(
+export const fundTransaction = catchAsync(
 	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
 		const { to, amount } = req.body;
 		const id = req.auth.id;
@@ -125,7 +126,7 @@ export const transactionInHedera = catchAsync(
 		const toAccountId = AccountId.fromString(to);
 
 		if (!toAccountId) {
-			return next(AppError.badRequest('To account not found'));
+			return next(AppError.badRequest('Recipient account not found'));
 		}
 
 		const transaction = new TransferTransaction()
@@ -139,6 +140,64 @@ export const transactionInHedera = catchAsync(
 			message: 'Transaction successful',
 			transactionId: txResponse.transactionId.toString(),
 			hashscanUrl: `https://hashscan.io/testnet/tx/${txResponse.transactionId.toString()}`,
+		});
+	}
+);
+
+export const createToken = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
+		const { name, symbol, initialSupply } = req.body;
+		const id = req.auth.id;
+		// get the user account
+		const fromWallet = await Wallet.findOne({ user: id });
+		if (!fromWallet) {
+			return next(AppError.badRequest('Wallet not found'));
+		}
+		if (!fromWallet.hedera.accountId) {
+			return next(AppError.badRequest('Hedera account not found'));
+		}
+		// Your account ID and private key from string value
+		const fromAccountId = AccountId.fromString(fromWallet.hedera.accountId);
+		const fromAccountPKey = PrivateKey.fromStringECDSA(
+			fromWallet.hedera.accountPrivateKey
+		);
+		client.setOperator(fromAccountId, fromAccountPKey);
+		// Create the token
+		const tokenCreateTx = new TokenCreateTransaction()
+			.setTokenName(name)
+			.setTokenSymbol(symbol)
+			.setDecimals(0)
+			.setInitialSupply(initialSupply)
+			.setAdminKey(fromAccountPKey)
+			.setSupplyKey(fromAccountPKey)
+			.freezeWith(client);
+		// Sign the transaction with the client operator private key and submit to a Hedera network
+		const tokenCreateTxSign = await tokenCreateTx.sign(fromAccountPKey);
+		const tokenCreateTxResponse = await tokenCreateTxSign.execute(client);
+		// Request the receipt of the transaction
+		const receiptTokenCreateTx = await tokenCreateTxResponse.getReceipt(client);
+		if (!receiptTokenCreateTx) {
+			throw new Error(
+				`Token creation failed. Transaction ID: ${tokenCreateTxResponse.transactionId}`
+			);
+		}
+		// Get the transaction consensus status
+		const statusTokenCreateTx = receiptTokenCreateTx.status;
+		// Get the Token ID
+		const tokenId = receiptTokenCreateTx.tokenId;
+		// Get the Transaction ID
+		const txIdTokenCreated = tokenCreateTxResponse.transactionId.toString();
+		if (!tokenId) {
+			return next(AppError.badRequest('Token Creation failed'));
+		}
+		client.close();
+		return res.status(200).json({
+			status: 'success',
+			message: 'Token created successfully',
+			receiptStatus: statusTokenCreateTx.toString(),
+			transactionId: txIdTokenCreated,
+			hashscanUrl: `https://hashscan.io/testnet/tx/${txIdTokenCreated}`,
+			tokenId: tokenId.toString(),
 		});
 	}
 );

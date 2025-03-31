@@ -13,6 +13,7 @@ dotenv.config();
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
 import hederaRoutes from './routes/wallets/hedera';
+import stellarRoutes from './routes/wallets/stellar';
 
 // init app
 const app = express();
@@ -25,14 +26,23 @@ const DB = process.env.DB || '';
 connectDB(DB);
 
 // middleware
-app.use(express.json());
 app.use(
 	cors({
-		origin: 'http://localhost:3000',
+		origin: [
+			'http://localhost:3000',
+			'chrome-extension://hfikebhkbbmbngalhmdlbgicambjpljg',
+			'https://www.youtube.com',
+			'https://youtube.com',
+		],
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 		credentials: true,
+		preflightContinue: false,
+		optionsSuccessStatus: 204,
 	})
 );
 app.use(morgan('dev'));
+app.use(express.json());
 
 // routes
 app.use('/api/auth', authRoutes);
@@ -40,6 +50,7 @@ app.use('/api/profile', profileRoutes);
 
 // wallets routes
 app.use('/api/wallets/hedera', hederaRoutes);
+app.use('/api/wallets/stellar', stellarRoutes);
 
 // not found
 app.use('*', notFound);

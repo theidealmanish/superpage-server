@@ -4,11 +4,13 @@ import catchAsync from '../utils/catchAsync';
 import AppError from '../utils/AppError';
 import { expressjwt } from 'express-jwt';
 import jwt from 'jsonwebtoken';
+import { RequestWithAuth } from 'types/request';
 
 // register
 const register = catchAsync(
 	async (req: Request, res: Response, next: NextFunction) => {
-		const { name, username, email, password, walletAddress } = req.body;
+		const { name, username, email, password } = req.body;
+		console.log(req.body);
 		// check if username or email already exists
 		const usernameExists = await user.findOne({
 			username,
@@ -36,12 +38,21 @@ const register = catchAsync(
 			username: username.trim().toLowerCase(),
 			email: email.trim(),
 			password,
-			walletAddress: walletAddress.trim(),
 		});
+		// generate and send JWT token
+		const token = jwt.sign(
+			{ id: newUser._id },
+			process.env.JWT_SECRET as string,
+			{
+				expiresIn: '30d',
+			}
+		);
+		console.log(token);
 		res.status(201).json({
 			status: 'success',
 			message: 'User created successfully',
 			data: newUser,
+			token,
 		});
 	}
 );
@@ -73,12 +84,29 @@ const login = catchAsync(
 			status: 'success',
 			message: 'User signed in successfully',
 			token: token,
+			user: existingUser,
+		});
+	}
+);
+
+// get current user
+const getCurrentUser = catchAsync(
+	async (req: RequestWithAuth, res: Response, next: NextFunction) => {
+		const userId = req.auth.id;
+		const currentUser = await user.findById(userId);
+		if (!currentUser) {
+			return next(new AppError('User not found', 404));
+		}
+		res.status(200).json({
+			status: 'success',
+			message: 'User fetched successfully',
+			data: currentUser,
 		});
 	}
 );
 
 // check if the user is logged in
-export const isLoggedIn = expressjwt({
+const isLoggedIn = expressjwt({
 	secret: (process.env.JWT_SECRET as string) || '',
 	algorithms: ['HS256'],
 	getToken: function (req: Request) {
@@ -92,4 +120,4 @@ export const isLoggedIn = expressjwt({
 	},
 });
 
-export { login, register };
+export { login, register, getCurrentUser, isLoggedIn };

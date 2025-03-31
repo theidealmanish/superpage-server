@@ -22,12 +22,6 @@ const userSchema = new mongoose.Schema<User>(
 			unique: true,
 			index: true,
 		},
-		walletAddress: {
-			type: String,
-			required: true,
-			unique: true,
-			index: true,
-		},
 		email: {
 			type: String,
 			required: true,

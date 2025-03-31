@@ -39,6 +39,9 @@ const profileSchema = new mongoose.Schema({
 		github: {
 			type: String,
 		},
+		youtube: {
+			type: String,
+		},
 	},
 });
 

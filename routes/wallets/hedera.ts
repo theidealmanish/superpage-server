@@ -1,13 +1,13 @@
 import express from 'express';
 import {
-	createHederaAccount,
-	transactionInHedera,
+	createAccount,
+	fundTransaction,
 } from '../../controllers/wallets/hedera';
 import { isLoggedIn } from 'controllers/auth';
 
 const router = express.Router();
 
-router.post('/create-wallet', isLoggedIn, createHederaAccount);
-router.post('/transfer', isLoggedIn, transactionInHedera);
+router.post('/create-account', isLoggedIn, createAccount);
+router.post('/transfer', isLoggedIn, fundTransaction);
 
 export default router;
